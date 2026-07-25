@@ -1,0 +1,120 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model User {
+  id           String   @id @default(uuid())
+  username     String   @unique
+  passwordHash String
+  createdAt    DateTime @default(now())
+}
+
+model Collection {
+  id          String   @id @default(uuid())
+  slug        String   @unique
+  title       String
+  description String   @default("")
+  status      String   @default("private") // public | private | closed
+  coverImage  String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  rooms        Room[]
+  beforeAfters BeforeAfter[]
+  shareLinks   ShareLink[]
+  clientAccess ClientAccess[]
+}
+
+model Room {
+  id           String   @id @default(uuid())
+  collectionId String
+  name         String
+  order        Int      @default(0)
+  panoramaUrl  String
+  initialYaw   Int      @default(0)
+  initialPitch Int      @default(0)
+  initialHfov  Int      @default(100)
+  createdAt    DateTime @default(now())
+
+  collection     Collection @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+  hotspotsFrom   Hotspot[]  @relation("fromRoom")
+  hotspotsTo     Hotspot[]  @relation("toRoom")
+
+  @@index([collectionId])
+}
+
+model Hotspot {
+  id         String  @id @default(uuid())
+  fromRoomId String
+  toRoomId   String
+  yaw        Float
+  pitch      Float
+  icon       String  @default("arrow")
+  label      String  @default("Перейти")
+
+  fromRoom Room @relation("fromRoom", fields: [fromRoomId], references: [id], onDelete: Cascade)
+  toRoom   Room @relation("toRoom", fields: [toRoomId], references: [id], onDelete: Cascade)
+
+  @@index([fromRoomId])
+}
+
+model BeforeAfter {
+  id           String   @id @default(uuid())
+  collectionId String
+  roomId       String?
+  title        String   @default("")
+  beforeImage  String
+  afterImage   String
+  order        Int      @default(0)
+  createdAt    DateTime @default(now())
+
+  collection Collection @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+
+  @@index([collectionId])
+}
+
+model Client {
+  id        String   @id @default(uuid())
+  name      String
+  email     String?
+  createdAt DateTime @default(now())
+
+  access ClientAccess[]
+}
+
+model ClientAccess {
+  id           String   @id @default(uuid())
+  clientId     String
+  collectionId String
+  accessToken  String   @unique
+  status       String   @default("pending") // pending | viewed | approved | rejected
+  comment      String?
+  viewedAt     DateTime?
+  approvedAt   DateTime?
+  createdAt    DateTime @default(now())
+
+  client     Client     @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  collection Collection @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+
+  @@index([clientId])
+  @@index([collectionId])
+}
+
+model ShareLink {
+  id           String    @id @default(uuid())
+  collectionId String
+  token        String    @unique
+  type         String    @default("private") // public | private
+  label        String    @default("")
+  expiresAt    DateTime?
+  createdAt    DateTime  @default(now())
+
+  collection Collection @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+
+  @@index([collectionId])
+}
