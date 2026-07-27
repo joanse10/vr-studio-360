@@ -21,19 +21,19 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   };
 
   return (
-    <div className="min-h-screen bg-dark-bg flex">
+    <div className="min-h-screen bg-ink-900 flex">
       {/* Sidebar */}
-      <aside className={`fixed lg:sticky top-0 left-0 h-screen w-64 glass-strong border-r border-dark-border z-40 transition-transform duration-300 ${
+      <aside className={`fixed lg:sticky top-0 left-0 h-screen w-60 glass-strong border-r border-border-subtle z-40 transition-transform duration-300 ${
         sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
       }`}>
-        <div className="p-6">
-          <Link href="/admin/dashboard" className="flex items-center gap-3 mb-8">
-            <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-neon-cyan to-neon-purple flex items-center justify-center">
-              <span className="text-dark-bg font-bold text-lg">V</span>
+        <div className="p-5 sm:p-6">
+          <Link href="/admin/dashboard" className="flex items-center gap-2.5 mb-8">
+            <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-accent-bright to-accent-dim flex items-center justify-center">
+              <span className="text-ink-900 font-bold text-base">V</span>
             </div>
             <div>
-              <h1 className="text-sm font-bold gradient-text">VR Studio 360</h1>
-              <p className="text-xs text-gray-500">Admin Panel</p>
+              <h1 className="text-sm font-semibold text-ink-50 tracking-tight">VR Studio 360</h1>
+              <p className="text-xs text-ink-300">Admin Panel</p>
             </div>
           </Link>
 
@@ -45,14 +45,14 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                   key={item.href}
                   href={item.href}
                   onClick={() => setSidebarOpen(false)}
-                  className={`flex items-center gap-3 px-4 py-3 rounded-lg text-sm transition-all duration-200 ${
+                  className={`flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-sm transition-all duration-200 ${
                     isActive
-                      ? 'bg-gradient-to-r from-neon-cyan/15 to-neon-purple/15 text-neon-cyan neon-text'
-                      : 'text-gray-400 hover:bg-white/5 hover:text-neon-cyan'
+                      ? 'bg-accent/10 text-accent border border-accent/15'
+                      : 'text-ink-200 hover:bg-white/5 hover:text-ink-50 border border-transparent'
                   }`}
                 >
                   <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={item.icon} />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d={item.icon} />
                   </svg>
                   <span>{item.label}</span>
                 </Link>
@@ -62,10 +62,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
           <button
             onClick={handleLogout}
-            className="flex items-center gap-3 px-4 py-3 rounded-lg text-sm text-gray-400 hover:bg-red-500/10 hover:text-red-400 transition-all duration-200 mt-8 w-full"
+            className="flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-sm text-ink-200 hover:bg-red-500/10 hover:text-red-400 transition-all duration-200 mt-8 w-full border border-transparent"
           >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+            <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
             </svg>
             <span>Выйти</span>
           </button>
@@ -83,16 +83,17 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       {/* Main content */}
       <div className="flex-1 min-w-0">
         {/* Mobile header */}
-        <header className="lg:hidden glass-strong border-b border-dark-border p-4 flex items-center justify-between sticky top-0 z-20">
-          <button onClick={() => setSidebarOpen(true)}>
-            <svg className="w-6 h-6 text-neon-cyan" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+        <header className="lg:hidden glass-strong border-b border-border-subtle px-4 py-3 flex items-center justify-between sticky top-0 z-20">
+          <button onClick={() => setSidebarOpen(true)} className="p-1">
+            <svg className="w-6 h-6 text-ink-100" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 6h16M4 12h16M4 18h16" />
             </svg>
           </button>
-          <span className="text-sm gradient-text font-bold">VR Studio 360</span>
+          <span className="text-sm text-ink-50 font-medium tracking-tight">VR Studio 360</span>
+          <div className="w-8" />
         </header>
 
-        <main className="p-6 lg:p-8">{children}</main>
+        <main className="p-4 sm:p-6 lg:p-8">{children}</main>
       </div>
     </div>
   );

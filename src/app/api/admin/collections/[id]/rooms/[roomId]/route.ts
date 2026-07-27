@@ -6,7 +6,7 @@ export async function PUT(
   req: NextRequest,
   { params }: { params: { id: string; roomId: string } }
 ) {
-  if (!isAuthenticated(req)) return unauthorizedResponse();
+  if (!(await isAuthenticated(req))) return unauthorizedResponse();
 
   try {
     const body = await req.json();
@@ -30,7 +30,7 @@ export async function DELETE(
   req: NextRequest,
   { params }: { params: { id: string; roomId: string } }
 ) {
-  if (!isAuthenticated(req)) return unauthorizedResponse();
+  if (!(await isAuthenticated(req))) return unauthorizedResponse();
 
   try {
     await prisma.room.delete({ where: { id: params.roomId } });

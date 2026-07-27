@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { isAuthenticated, unauthorizedResponse } from '@/lib/auth';
+import { isAuthenticated, unauthorizedResponse, getTokenFromRequest, verifyToken } from '@/lib/auth';
 import { generateToken } from '@/lib/utils';
+import { createClientSchema } from '@/lib/validation';
+import { auditLog } from '@/lib/audit';
 
 export async function GET(req: NextRequest) {
-  if (!isAuthenticated(req)) return unauthorizedResponse();
+  if (!(await isAuthenticated(req))) return unauthorizedResponse();
 
   try {
     const clients = await prisma.client.findMany({
@@ -20,10 +22,17 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  if (!isAuthenticated(req)) return unauthorizedResponse();
+  if (!(await isAuthenticated(req))) return unauthorizedResponse();
 
   try {
-    const { name, email, collectionId } = await req.json();
+    const body = await req.json();
+    const parsed = createClientSchema.safeParse(body);
+
+    if (!parsed.success) {
+      return NextResponse.json({ error: 'Неверный формат данных', details: parsed.error.flatten() }, { status: 400 });
+    }
+
+    const { name, email, collectionId } = parsed.data;
 
     if (!name) {
       return NextResponse.json({ error: 'Введите имя клиента' }, { status: 400 });
@@ -33,6 +42,7 @@ export async function POST(req: NextRequest) {
       data: {
         name,
         email: email || null,
+        accessToken: generateToken(),
         ...(collectionId
           ? {
               access: {
@@ -45,6 +55,16 @@ export async function POST(req: NextRequest) {
           : {}),
       },
       include: { access: true },
+    });
+
+    const token = getTokenFromRequest(req);
+    const payload = token ? await verifyToken(token) : null;
+    await auditLog({
+      userId: payload?.userId,
+      action: 'client.create',
+      entity: 'client',
+      entityId: client.id,
+      metadata: { name },
     });
 
     return NextResponse.json(client, { status: 201 });

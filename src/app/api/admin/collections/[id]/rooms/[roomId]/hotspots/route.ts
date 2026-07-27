@@ -6,7 +6,7 @@ export async function POST(
   req: NextRequest,
   { params }: { params: { id: string; roomId: string } }
 ) {
-  if (!isAuthenticated(req)) return unauthorizedResponse();
+  if (!(await isAuthenticated(req))) return unauthorizedResponse();
 
   try {
     const { toRoomId, yaw, pitch, label } = await req.json();
@@ -36,7 +36,7 @@ export async function GET(
   req: NextRequest,
   { params }: { params: { id: string; roomId: string } }
 ) {
-  if (!isAuthenticated(req)) return unauthorizedResponse();
+  if (!(await isAuthenticated(req))) return unauthorizedResponse();
 
   try {
     const hotspots = await prisma.hotspot.findMany({

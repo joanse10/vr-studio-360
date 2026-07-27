@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { isAuthenticated, unauthorizedResponse } from '@/lib/auth';
+import { isAuthenticated, unauthorizedResponse, getTokenFromRequest, verifyToken } from '@/lib/auth';
 import { slugify, generateToken } from '@/lib/utils';
+import { createCollectionSchema } from '@/lib/validation';
+import { auditLog } from '@/lib/audit';
 
 export async function GET(req: NextRequest) {
-  if (!isAuthenticated(req)) return unauthorizedResponse();
+  if (!(await isAuthenticated(req))) return unauthorizedResponse();
 
   try {
     const collections = await prisma.collection.findMany({
@@ -21,14 +23,17 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  if (!isAuthenticated(req)) return unauthorizedResponse();
+  if (!(await isAuthenticated(req))) return unauthorizedResponse();
 
   try {
-    const { title, description, status, coverImage, rooms, beforeAfters } = await req.json();
+    const body = await req.json();
+    const parsed = createCollectionSchema.safeParse(body);
 
-    if (!title) {
-      return NextResponse.json({ error: 'Введите название' }, { status: 400 });
+    if (!parsed.success) {
+      return NextResponse.json({ error: 'Неверный формат данных', details: parsed.error.flatten() }, { status: 400 });
     }
+
+    const { title, description, status, coverImage, rooms, beforeAfters } = parsed.data;
 
     let slug = slugify(title);
     const existing = await prisma.collection.findUnique({ where: { slug } });
@@ -66,6 +71,16 @@ export async function POST(req: NextRequest) {
           },
         },
       },
+    });
+
+    const token = getTokenFromRequest(req);
+    const payload = token ? await verifyToken(token) : null;
+    await auditLog({
+      userId: payload?.userId,
+      action: 'collection.create',
+      entity: 'collection',
+      entityId: collection.id,
+      metadata: { title, slug },
     });
 
     return NextResponse.json(collection, { status: 201 });

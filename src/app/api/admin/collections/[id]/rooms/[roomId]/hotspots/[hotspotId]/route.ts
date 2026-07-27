@@ -6,7 +6,7 @@ export async function DELETE(
   req: NextRequest,
   { params }: { params: { id: string; roomId: string; hotspotId: string } }
 ) {
-  if (!isAuthenticated(req)) return unauthorizedResponse();
+  if (!(await isAuthenticated(req))) return unauthorizedResponse();
 
   try {
     await prisma.hotspot.delete({ where: { id: params.hotspotId } });

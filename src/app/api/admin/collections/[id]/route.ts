@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { isAuthenticated, unauthorizedResponse } from '@/lib/auth';
+import { isAuthenticated, unauthorizedResponse, getTokenFromRequest, verifyToken } from '@/lib/auth';
+import { auditLog } from '@/lib/audit';
 
 export async function GET(
   req: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  if (!isAuthenticated(req)) return unauthorizedResponse();
+  if (!(await isAuthenticated(req))) return unauthorizedResponse();
 
   try {
     const collection = await prisma.collection.findUnique({
@@ -36,7 +37,7 @@ export async function PUT(
   req: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  if (!isAuthenticated(req)) return unauthorizedResponse();
+  if (!(await isAuthenticated(req))) return unauthorizedResponse();
 
   try {
     const body = await req.json();
@@ -62,10 +63,20 @@ export async function DELETE(
   req: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  if (!isAuthenticated(req)) return unauthorizedResponse();
+  if (!(await isAuthenticated(req))) return unauthorizedResponse();
 
   try {
     await prisma.collection.delete({ where: { id: params.id } });
+
+    const token = getTokenFromRequest(req);
+    const payload = token ? await verifyToken(token) : null;
+    await auditLog({
+      userId: payload?.userId,
+      action: 'collection.delete',
+      entity: 'collection',
+      entityId: params.id,
+    });
+
     return NextResponse.json({ success: true });
   } catch {
     return NextResponse.json({ error: 'Ошибка удаления' }, { status: 500 });

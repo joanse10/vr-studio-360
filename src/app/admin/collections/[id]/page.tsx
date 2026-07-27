@@ -3,6 +3,8 @@ import { prisma } from '@/lib/prisma';
 import { notFound } from 'next/navigation';
 import CollectionEditor from './CollectionEditor';
 
+export const dynamic = 'force-dynamic';
+
 async function getCollection(id: string) {
   try {
     const collection = await prisma.collection.findUnique({
@@ -10,7 +12,7 @@ async function getCollection(id: string) {
       include: {
         rooms: {
           orderBy: { order: 'asc' },
-          include: { hotspotsFrom: true },
+          include: { hotspotsFrom: true, infoHotspots: true },
         },
         beforeAfters: { orderBy: { order: 'asc' } },
         shareLinks: true,
@@ -57,6 +59,16 @@ export default async function EditCollectionPage({
         toRoomId: h.toRoomId,
         label: h.label,
         icon: h.icon,
+      })),
+      infoHotspots: r.infoHotspots.map((ih) => ({
+        id: ih.id,
+        title: ih.title,
+        description: ih.description,
+        imageUrl: ih.imageUrl,
+        linkUrl: ih.linkUrl,
+        linkText: ih.linkText,
+        yaw: ih.yaw,
+        pitch: ih.pitch,
       })),
     })),
     beforeAfters: collection.beforeAfters.map((ba) => ({

@@ -2,6 +2,8 @@ import AdminLayout from '@/components/AdminLayout';
 import { prisma } from '@/lib/prisma';
 import ClientsManager from './ClientsManager';
 
+export const dynamic = 'force-dynamic';
+
 async function getClients() {
   try {
     const clients = await prisma.client.findMany({
@@ -39,6 +41,7 @@ export default async function ClientsPage() {
     id: c.id,
     name: c.name,
     email: c.email,
+    accessToken: c.accessToken,
     createdAt: c.createdAt.toISOString(),
     access: c.access.map((a) => ({
       id: a.id,
@@ -60,9 +63,9 @@ export default async function ClientsPage() {
 
   return (
     <AdminLayout>
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold gradient-text mb-2">Клиенты</h1>
-        <p className="text-sm text-gray-400">Управление клиентами и доступом</p>
+      <div className="mb-6 sm:mb-8">
+        <h1 className="text-xl sm:text-2xl font-bold text-ink-50 mb-1 tracking-tight">Клиенты</h1>
+        <p className="text-sm text-ink-300">Управление клиентами и доступом</p>
       </div>
 
       <ClientsManager

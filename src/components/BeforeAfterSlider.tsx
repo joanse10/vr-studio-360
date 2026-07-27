@@ -20,7 +20,6 @@ export default function BeforeAfterSlider({
   const containerRef = useRef<HTMLDivElement>(null);
   const [position, setPosition] = useState(50);
   const [isDragging, setIsDragging] = useState(false);
-  const [imagesLoaded, setImagesLoaded] = useState({ before: false, after: false });
 
   const updatePosition = useCallback((clientX: number) => {
     if (!containerRef.current) return;
@@ -44,17 +43,9 @@ export default function BeforeAfterSlider({
   useEffect(() => {
     if (!isDragging) return;
 
-    const handleMouseMove = (e: MouseEvent) => {
-      updatePosition(e.clientX);
-    };
-
-    const handleTouchMove = (e: TouchEvent) => {
-      updatePosition(e.touches[0].clientX);
-    };
-
-    const handleEnd = () => {
-      setIsDragging(false);
-    };
+    const handleMouseMove = (e: MouseEvent) => updatePosition(e.clientX);
+    const handleTouchMove = (e: TouchEvent) => updatePosition(e.touches[0].clientX);
+    const handleEnd = () => setIsDragging(false);
 
     window.addEventListener('mousemove', handleMouseMove);
     window.addEventListener('mouseup', handleEnd);
@@ -69,59 +60,88 @@ export default function BeforeAfterSlider({
     };
   }, [isDragging, updatePosition]);
 
-  const allLoaded = imagesLoaded.before && imagesLoaded.after;
-
   return (
     <div
       ref={containerRef}
-      className={`ba-slider relative w-full rounded-xl overflow-hidden neon-border cursor-ew-resize ${className}`}
+      className={`relative w-full rounded-2xl overflow-hidden cursor-ew-resize select-none ${className}`}
       style={{ aspectRatio: '16/9' }}
       onMouseDown={handleMouseDown}
       onTouchStart={handleTouchStart}
     >
-      {!allLoaded && (
-        <div className="absolute inset-0 shimmer-bg z-50 flex items-center justify-center">
-          <div className="text-neon-cyan text-sm">Загрузка...</div>
-        </div>
-      )}
-
-      {/* After image (full) */}
+      {/* After image — full */}
       <img
         src={afterImage}
         alt={afterLabel}
         className="absolute inset-0 w-full h-full object-cover"
-        onLoad={() => setImagesLoaded((prev) => ({ ...prev, after: true }))}
         draggable={false}
       />
 
-      {/* Before image (clipped) */}
-      <div
-        className="absolute inset-0 overflow-hidden"
-        style={{ width: `${position}%` }}
-      >
-        <img
-          src={beforeImage}
-          alt={beforeLabel}
-          className="absolute inset-0 h-full object-cover"
-          style={{ width: `${containerRef.current?.clientWidth || 1000}px` }}
-          onLoad={() => setImagesLoaded((prev) => ({ ...prev, before: true }))}
-          draggable={false}
-        />
-      </div>
+      {/* Before image — clipped from right using clip-path */}
+      <img
+        src={beforeImage}
+        alt={beforeLabel}
+        className="absolute inset-0 w-full h-full object-cover"
+        style={{ clipPath: `inset(0 ${100 - position}% 0 0)` }}
+        draggable={false}
+      />
 
       {/* Labels */}
-      <div className="absolute top-3 left-3 glass-strong rounded-md px-3 py-1 z-20">
-        <span className="text-xs font-medium text-gray-300">{beforeLabel}</span>
+      <div
+        className="absolute top-4 left-4 z-20 transition-opacity duration-200"
+        style={{ opacity: position > 10 ? 1 : 0 }}
+      >
+        <span className="px-3 py-1.5 rounded-full text-xs font-semibold text-ink-50 bg-ink-900/70 backdrop-blur-md border border-accent/20">
+          {beforeLabel}
+        </span>
       </div>
-      <div className="absolute top-3 right-3 glass-strong rounded-md px-3 py-1 z-20">
-        <span className="text-xs font-medium text-neon-cyan neon-text">{afterLabel}</span>
+      <div
+        className="absolute top-4 right-4 z-20 transition-opacity duration-200"
+        style={{ opacity: position < 90 ? 1 : 0 }}
+      >
+        <span className="px-3 py-1.5 rounded-full text-xs font-semibold text-accent-bright bg-ink-900/70 backdrop-blur-md border border-accent/20">
+          {afterLabel}
+        </span>
       </div>
 
-      {/* Slider handle */}
+      {/* Divider line */}
       <div
-        className="ba-slider-handle"
-        style={{ left: `${position}%` }}
+        className="absolute top-0 bottom-0 z-10 pointer-events-none"
+        style={{
+          left: `${position}%`,
+          transform: 'translateX(-50%)',
+          width: '2px',
+          background: 'linear-gradient(180deg, transparent 0%, #e8a87c 15%, #f0b896 50%, #e8a87c 85%, transparent 100%)',
+          boxShadow: '0 0 12px rgba(232,168,124,0.4)',
+        }}
       />
+
+      {/* Handle */}
+      <div
+        className="absolute top-1/2 z-30 pointer-events-none"
+        style={{
+          left: `${position}%`,
+          transform: 'translate(-50%, -50%)',
+        }}
+      >
+        <div
+          className="flex items-center justify-center rounded-full transition-all duration-200"
+          style={{
+            width: isDragging ? 48 : 42,
+            height: isDragging ? 48 : 42,
+            background: 'linear-gradient(135deg, #f0b896, #c98a63)',
+            boxShadow: isDragging
+              ? '0 4px 20px rgba(232,168,124,0.5), 0 0 0 4px rgba(232,168,124,0.15)'
+              : '0 2px 12px rgba(0,0,0,0.5), 0 0 0 3px rgba(232,168,124,0.1)',
+          }}
+        >
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0c0c0e" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="15 18 9 12 15 6" />
+          </svg>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0c0c0e" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="9 18 15 12 9 6" />
+          </svg>
+        </div>
+      </div>
     </div>
   );
 }

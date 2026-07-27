@@ -38,6 +38,7 @@ export default function RootLayout({
   return (
     <html lang="ru" className={inter.variable}>
       <head>
+        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5, viewport-fit=cover" />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{
@@ -57,7 +58,7 @@ export default function RootLayout({
           }}
         />
       </head>
-      <body className="bg-dark-bg text-gray-200 antialiased">
+      <body className="bg-ink-900 text-ink-100 antialiased">
         {children}
       </body>
     </html>

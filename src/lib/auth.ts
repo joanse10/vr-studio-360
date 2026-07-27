@@ -1,20 +1,39 @@
 import { NextRequest, NextResponse } from 'next/server';
-import jwt from 'jsonwebtoken';
+import { SignJWT, jwtVerify } from 'jose';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'vr-studio-360-secret-change-in-production';
+const JWT_SECRET = process.env.JWT_SECRET;
+
+if (!JWT_SECRET) {
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error('JWT_SECRET must be set in production. Generate with: openssl rand -base64 48');
+  }
+  console.warn('[SECURITY] JWT_SECRET not set — using development fallback. DO NOT use in production!');
+}
+
+const SECRET = new TextEncoder().encode(JWT_SECRET || 'dev-only-secret-not-for-production-use');
 
 export interface JWTPayload {
   userId: string;
   username: string;
 }
 
-export function signToken(payload: JWTPayload): string {
-  return jwt.sign(payload, JWT_SECRET, { expiresIn: '7d' });
+export async function signToken(payload: JWTPayload): Promise<string> {
+  return new SignJWT({ ...payload })
+    .setProtectedHeader({ alg: 'HS256' })
+    .setIssuedAt()
+    .setIssuer('vr-studio-360')
+    .setAudience('admin-panel')
+    .setExpirationTime('8h')
+    .sign(SECRET);
 }
 
-export function verifyToken(token: string): JWTPayload | null {
+export async function verifyToken(token: string): Promise<JWTPayload | null> {
   try {
-    return jwt.verify(token, JWT_SECRET) as JWTPayload;
+    const { payload } = await jwtVerify(token, SECRET, {
+      issuer: 'vr-studio-360',
+      audience: 'admin-panel',
+    });
+    return payload as unknown as JWTPayload;
   } catch {
     return null;
   }
@@ -29,10 +48,10 @@ export function getTokenFromRequest(req: NextRequest): string | null {
   return token || null;
 }
 
-export function isAuthenticated(req: NextRequest): boolean {
+export async function isAuthenticated(req: NextRequest): Promise<boolean> {
   const token = getTokenFromRequest(req);
   if (!token) return false;
-  return verifyToken(token) !== null;
+  return (await verifyToken(token)) !== null;
 }
 
 export function unauthorizedResponse(): NextResponse {

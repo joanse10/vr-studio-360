@@ -1,11 +1,12 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
 
 const HotspotEditor = dynamic(() => import('@/components/HotspotEditor'), { ssr: false });
+const InfoHotspotEditor = dynamic(() => import('@/components/InfoHotspotEditor'), { ssr: false });
 
 interface RoomHotspot {
   id: string;
@@ -16,12 +17,24 @@ interface RoomHotspot {
   icon: string;
 }
 
+interface RoomInfoHotspot {
+  id: string;
+  title: string;
+  description: string;
+  imageUrl: string | null;
+  linkUrl: string | null;
+  linkText: string;
+  yaw: number;
+  pitch: number;
+}
+
 interface RoomData {
   id: string;
   name: string;
   order: number;
   panoramaUrl: string;
   hotspots: RoomHotspot[];
+  infoHotspots: RoomInfoHotspot[];
 }
 
 interface BeforeAfterData {
@@ -75,6 +88,13 @@ export default function CollectionEditor({ collection }: { collection: Collectio
   const [newBaAfter, setNewBaAfter] = useState('');
   const [beforeAfters, setBeforeAfters] = useState<BeforeAfterData[]>(collection.beforeAfters);
   const [expandedRoom, setExpandedRoom] = useState<string | null>(null);
+  const [baLoading, setBaLoading] = useState(false);
+  const [baError, setBaError] = useState('');
+  const baBeforeInputRef = useRef<HTMLInputElement>(null);
+  const baAfterInputRef = useRef<HTMLInputElement>(null);
+
+  // Info hotspot section toggle
+  const [showInfoForm, setShowInfoForm] = useState<string | null>(null);
 
   const uploadFile = async (file: File, type: 'panorama' | 'image'): Promise<string> => {
     const formData = new FormData();
@@ -116,12 +136,14 @@ export default function CollectionEditor({ collection }: { collection: Collectio
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ title, description, status, coverImage: coverImage || null }),
+        cache: 'no-store',
       });
 
       if (res.ok) {
-        router.refresh();
+        setError('');
       } else {
-        setError('Ошибка сохранения');
+        const data = await res.json();
+        setError(data.error || 'Ошибка сохранения');
       }
     } catch {
       setError('Ошибка соединения');
@@ -186,6 +208,9 @@ export default function CollectionEditor({ collection }: { collection: Collectio
         setNewRoomPanorama('');
         setShowRoomForm(false);
         setError('');
+      } else {
+        const data = await res.json();
+        setError(data.error || 'Ошибка создания комнаты');
       }
     } catch {
       setError('Ошибка создания комнаты');
@@ -218,19 +243,24 @@ export default function CollectionEditor({ collection }: { collection: Collectio
 
   const handleAddBa = async () => {
     if (!newBaBefore || !newBaAfter) {
-      setError('Загрузите оба изображения');
+      setBaError('Загрузите оба изображения (До и После)');
       return;
     }
 
+    setBaLoading(true);
+    setBaError('');
+
     try {
+      const payload = {
+        title: newBaTitle,
+        beforeImage: newBaBefore,
+        afterImage: newBaAfter,
+      };
       const res = await fetch(`/api/admin/collections/${collection.id}/before-after`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          title: newBaTitle,
-          beforeImage: newBaBefore,
-          afterImage: newBaAfter,
-        }),
+        body: JSON.stringify(payload),
+        cache: 'no-store',
       });
 
       if (res.ok) {
@@ -240,10 +270,15 @@ export default function CollectionEditor({ collection }: { collection: Collectio
         setNewBaBefore('');
         setNewBaAfter('');
         setShowBaForm(false);
-        setError('');
+        setBaError('');
+      } else {
+        const data = await res.json();
+        setBaError(data.error || 'Ошибка создания пары');
       }
     } catch {
-      setError('Ошибка создания пары');
+      setBaError('Ошибка соединения с сервером');
+    } finally {
+      setBaLoading(false);
     }
   };
 
@@ -259,17 +294,17 @@ export default function CollectionEditor({ collection }: { collection: Collectio
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold gradient-text mb-2">Редактирование</h1>
-          <p className="text-sm text-gray-400">/{collection.slug}</p>
+    <div className="space-y-4 sm:space-y-6">
+      <div className="flex items-center justify-between flex-wrap gap-2">
+        <div className="min-w-0">
+          <h1 className="text-lg sm:text-2xl font-bold text-ink-50 mb-1 tracking-tight truncate">Редактирование</h1>
+          <p className="text-sm text-ink-300 truncate">/{collection.slug}</p>
         </div>
-        <div className="flex gap-3">
-          <Link href={`/collection/${collection.slug}`} target="_blank" className="text-sm text-neon-cyan hover:underline">
+        <div className="flex gap-3 flex-shrink-0">
+          <Link href={`/collection/${collection.slug}`} target="_blank" className="text-sm text-accent hover:underline">
             Открыть →
           </Link>
-          <button onClick={handleDelete} className="text-sm text-red-400 hover:text-red-300">
+          <button type="button" onClick={handleDelete} className="text-sm text-red-400 hover:text-red-300">
             Удалить
           </button>
         </div>
@@ -282,38 +317,38 @@ export default function CollectionEditor({ collection }: { collection: Collectio
       )}
 
       {uploading && (
-        <div className="text-sm text-neon-cyan bg-neon-cyan/10 border border-neon-cyan/20 rounded-lg px-4 py-3">
+        <div className="text-sm text-accent bg-accent/10 border border-accent/15 rounded-lg px-4 py-3">
           Загрузка файла...
         </div>
       )}
 
       {/* Basic info */}
-      <div className="glass rounded-xl p-6 space-y-4">
-        <h2 className="text-lg font-semibold text-white">Основная информация</h2>
+      <div className="glass rounded-xl p-4 sm:p-6 space-y-4">
+        <h2 className="text-base font-semibold text-ink-50">Основная информация</h2>
 
         <div>
-          <label className="block text-sm text-gray-400 mb-2">Название</label>
+          <label className="block text-sm text-ink-200 mb-2">Название</label>
           <input
             type="text"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            className="w-full bg-dark-card border border-dark-border rounded-lg px-4 py-3 text-white focus:outline-none focus:border-neon-cyan/50"
+            className="w-full bg-ink-800 border border-border-default rounded-lg px-4 py-3 text-ink-50 focus:outline-none focus:border-accent/40"
           />
         </div>
 
         <div>
-          <label className="block text-sm text-gray-400 mb-2">Описание</label>
+          <label className="block text-sm text-ink-200 mb-2">Описание</label>
           <textarea
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             rows={3}
-            className="w-full bg-dark-card border border-dark-border rounded-lg px-4 py-3 text-white focus:outline-none focus:border-neon-cyan/50 resize-none"
+            className="w-full bg-ink-800 border border-border-default rounded-lg px-4 py-3 text-ink-50 focus:outline-none focus:border-accent/40 resize-none"
           />
         </div>
 
         <div>
-          <label className="block text-sm text-gray-400 mb-2">Тип доступа</label>
-          <div className="flex gap-3">
+          <label className="block text-sm text-ink-200 mb-2">Тип доступа</label>
+          <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
             {[
               { value: 'public', label: 'Публичная' },
               { value: 'private', label: 'Приватная' },
@@ -325,8 +360,8 @@ export default function CollectionEditor({ collection }: { collection: Collectio
                 onClick={() => setStatus(opt.value)}
                 className={`flex-1 p-3 rounded-lg border text-sm transition-all ${
                   status === opt.value
-                    ? 'border-neon-cyan/50 bg-neon-cyan/10 text-neon-cyan'
-                    : 'border-dark-border bg-dark-card text-gray-300'
+                    ? 'border-accent/40 bg-accent/10 text-accent'
+                    : 'border-border-default bg-ink-800 text-ink-100'
                 }`}
               >
                 {opt.label}
@@ -336,22 +371,22 @@ export default function CollectionEditor({ collection }: { collection: Collectio
         </div>
 
         <div>
-          <label className="block text-sm text-gray-400 mb-2">Обложка</label>
+          <label className="block text-sm text-ink-200 mb-2">Обложка</label>
           {coverImage && (
             <div className="mb-3">
               <img
                 src={coverImage}
                 alt="Обложка"
-                className="w-full h-40 object-cover rounded-lg border border-dark-border"
+                className="w-full h-40 object-cover rounded-lg border border-border-default"
               />
             </div>
           )}
-          <div className="flex gap-3">
+          <div className="flex flex-col sm:flex-row gap-3">
             <input
               type="text"
               value={coverImage}
               onChange={(e) => setCoverImage(e.target.value)}
-              className="flex-1 bg-dark-card border border-dark-border rounded-lg px-4 py-3 text-white focus:outline-none focus:border-neon-cyan/50"
+              className="flex-1 bg-ink-800 border border-border-default rounded-lg px-4 py-3 text-ink-50 focus:outline-none focus:border-accent/40"
               placeholder="URL или загрузите файл"
             />
             <label className="btn-neon cursor-pointer text-sm whitespace-nowrap">
@@ -369,27 +404,27 @@ export default function CollectionEditor({ collection }: { collection: Collectio
           </div>
         </div>
 
-        <button onClick={handleSave} disabled={loading} className="btn-neon">
+        <button type="button" onClick={handleSave} disabled={loading} className="btn-neon">
           {loading ? 'Сохранение...' : 'Сохранить'}
         </button>
       </div>
 
       {/* Rooms */}
-      <div className="glass rounded-xl p-6">
+      <div className="glass rounded-xl p-4 sm:p-6">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold text-white">Комнаты ({rooms.length})</h2>
-          <button onClick={() => setShowRoomForm(!showRoomForm)} className="btn-neon text-sm">
+          <h2 className="text-base font-semibold text-ink-50">Комнаты ({rooms.length})</h2>
+          <button type="button" onClick={() => setShowRoomForm(!showRoomForm)} className="btn-neon text-sm">
             + Комната
           </button>
         </div>
 
         {showRoomForm && (
-          <div className="bg-dark-card border border-dark-border rounded-lg p-4 space-y-3 mb-4">
+          <div className="bg-ink-800 border border-border-default rounded-lg p-4 space-y-3 mb-4">
             <input
               type="text"
               value={newRoomName}
               onChange={(e) => setNewRoomName(e.target.value)}
-              className="w-full bg-dark-bg border border-dark-border rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-neon-cyan/50"
+              className="w-full bg-ink-900 border border-border-default rounded-lg px-3 py-2 text-ink-50 text-sm focus:outline-none focus:border-accent/40"
               placeholder="Название комнаты (Гостиная, Кухня...)"
             />
             <div className="flex gap-2">
@@ -397,7 +432,7 @@ export default function CollectionEditor({ collection }: { collection: Collectio
                 type="text"
                 value={newRoomPanorama}
                 onChange={(e) => setNewRoomPanorama(e.target.value)}
-                className="flex-1 bg-dark-bg border border-dark-border rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-neon-cyan/50"
+                className="flex-1 bg-ink-900 border border-border-default rounded-lg px-3 py-2 text-ink-50 text-sm focus:outline-none focus:border-accent/40"
                 placeholder="URL 360° панорамы или загрузите файл"
               />
               <label className="btn-neon cursor-pointer text-sm whitespace-nowrap">
@@ -414,12 +449,12 @@ export default function CollectionEditor({ collection }: { collection: Collectio
               </label>
             </div>
             <div className="flex gap-2">
-              <button onClick={handleAddRoom} className="btn-neon text-sm">
+              <button type="button" onClick={handleAddRoom} className="btn-neon text-sm">
                 Добавить комнату
               </button>
               <button
                 onClick={() => { setShowRoomForm(false); setNewRoomName(''); setNewRoomPanorama(''); }}
-                className="text-gray-400 hover:text-white text-sm px-4 py-3"
+                className="text-ink-200 hover:text-ink-50 text-sm px-4 py-3"
               >
                 Отмена
               </button>
@@ -428,15 +463,15 @@ export default function CollectionEditor({ collection }: { collection: Collectio
         )}
 
         {rooms.length === 0 ? (
-          <p className="text-sm text-gray-500">Нет комнат</p>
+          <p className="text-sm text-ink-300">Нет комнат</p>
         ) : (
           <div className="space-y-3">
             {rooms.map((room, idx) => (
-              <div key={room.id} className="bg-dark-card border border-dark-border rounded-lg p-4">
+              <div key={room.id} className="bg-ink-800 border border-border-default rounded-lg p-4">
                 <div className="flex items-center justify-between mb-3">
                   <div>
-                    <span className="text-xs text-gray-500">#{idx + 1}</span>
-                    <p className="text-sm text-white mt-1">{room.name}</p>
+                    <span className="text-xs text-ink-300">#{idx + 1}</span>
+                    <p className="text-sm text-ink-50 mt-1">{room.name}</p>
                   </div>
                   <button
                     onClick={() => handleDeleteRoom(room.id)}
@@ -445,12 +480,12 @@ export default function CollectionEditor({ collection }: { collection: Collectio
                     Удалить
                   </button>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
                   <input
                     type="text"
                     value={room.panoramaUrl}
                     readOnly
-                    className="flex-1 bg-dark-bg border border-dark-border rounded-lg px-3 py-2 text-gray-400 text-xs focus:outline-none truncate"
+                    className="w-full bg-ink-900 border border-border-default rounded-lg px-3 py-2 text-ink-200 text-xs focus:outline-none truncate"
                   />
                   <label className="btn-neon cursor-pointer text-xs whitespace-nowrap px-3 py-2">
                     Заменить
@@ -467,10 +502,10 @@ export default function CollectionEditor({ collection }: { collection: Collectio
                 </div>
 
                 {rooms.length > 1 && (
-                  <div className="mt-3 pt-3 border-t border-dark-border">
+                  <div className="mt-3 pt-3 border-t border-border-subtle">
                     <button
                       onClick={() => setExpandedRoom(expandedRoom === room.id ? null : room.id)}
-                      className="text-xs text-neon-cyan hover:text-neon-purple transition-colors"
+                      className="text-xs text-accent hover:text-accent-bright transition-colors"
                     >
                       {expandedRoom === room.id ? '▼ Скрыть переходы' : '▶ Настроить переходы (hotspots)'}
                     </button>
@@ -488,6 +523,24 @@ export default function CollectionEditor({ collection }: { collection: Collectio
                     />
                   </div>
                 )}
+
+                {/* Info Hotspots */}
+                <div className="mt-3 pt-3 border-t border-border-subtle">
+                  <button
+                    onClick={() => setShowInfoForm(showInfoForm === room.id ? null : room.id)}
+                    className="text-xs text-accent hover:text-accent-bright transition-colors mb-2"
+                  >
+                    {showInfoForm === room.id ? '▼ Скрыть' : '▶ Информационные метки'} ({room.infoHotspots?.length || 0})
+                  </button>
+
+                  {showInfoForm === room.id && (
+                    <InfoHotspotEditor
+                      room={room}
+                      collectionId={collection.id}
+                      onHotspotChanged={() => router.refresh()}
+                    />
+                  )}
+                </div>
               </div>
             ))}
           </div>
@@ -495,26 +548,31 @@ export default function CollectionEditor({ collection }: { collection: Collectio
       </div>
 
       {/* Before/After */}
-      <div className="glass rounded-xl p-6">
+      <div className="glass rounded-xl p-4 sm:p-6">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold text-white">До / После ({beforeAfters.length})</h2>
-          <button onClick={() => setShowBaForm(!showBaForm)} className="btn-neon text-sm">
+          <h2 className="text-base font-semibold text-ink-50">До / После ({beforeAfters.length})</h2>
+          <button type="button" onClick={() => setShowBaForm(!showBaForm)} className="btn-neon text-sm">
             + Пара
           </button>
         </div>
 
         {showBaForm && (
-          <div className="bg-dark-card border border-dark-border rounded-lg p-4 space-y-3 mb-4">
+          <div className="bg-ink-800 border border-border-default rounded-lg p-4 space-y-3 mb-4">
+            {baError && (
+              <div className="text-sm text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2">
+                {baError}
+              </div>
+            )}
             <input
               type="text"
               value={newBaTitle}
               onChange={(e) => setNewBaTitle(e.target.value)}
-              className="w-full bg-dark-bg border border-dark-border rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-neon-cyan/50"
+              className="w-full bg-ink-900 border border-border-default rounded-lg px-3 py-2 text-ink-50 text-sm focus:outline-none focus:border-accent/40"
               placeholder="Заголовок (опционально)"
             />
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs text-gray-500 mb-1">До</label>
+                <label className="block text-xs text-ink-300 mb-1">До</label>
                 {newBaBefore && (
                   <img src={newBaBefore} alt="До" className="w-full h-24 object-cover rounded-md mb-2" />
                 )}
@@ -523,25 +581,30 @@ export default function CollectionEditor({ collection }: { collection: Collectio
                     type="text"
                     value={newBaBefore}
                     onChange={(e) => setNewBaBefore(e.target.value)}
-                    className="flex-1 bg-dark-bg border border-dark-border rounded-lg px-2 py-2 text-white text-xs focus:outline-none focus:border-neon-cyan/50"
+                    className="flex-1 bg-ink-900 border border-border-default rounded-lg px-2 py-2 text-ink-50 text-xs focus:outline-none focus:border-accent/40"
                     placeholder="URL"
                   />
-                  <label className="btn-neon cursor-pointer text-xs whitespace-nowrap px-2 py-2">
+                  <button
+                    type="button"
+                    onClick={() => baBeforeInputRef.current?.click()}
+                    className="btn-neon cursor-pointer text-xs whitespace-nowrap px-2 py-2"
+                  >
                     ↑
-                    <input
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (file) handleUpload(file, 'image', setNewBaBefore);
-                      }}
-                    />
-                  </label>
+                  </button>
+                  <input
+                    ref={baBeforeInputRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) handleUpload(file, 'image', setNewBaBefore);
+                    }}
+                  />
                 </div>
               </div>
               <div>
-                <label className="block text-xs text-gray-500 mb-1">После</label>
+                <label className="block text-xs text-ink-300 mb-1">После</label>
                 {newBaAfter && (
                   <img src={newBaAfter} alt="После" className="w-full h-24 object-cover rounded-md mb-2" />
                 )}
@@ -550,31 +613,37 @@ export default function CollectionEditor({ collection }: { collection: Collectio
                     type="text"
                     value={newBaAfter}
                     onChange={(e) => setNewBaAfter(e.target.value)}
-                    className="flex-1 bg-dark-bg border border-dark-border rounded-lg px-2 py-2 text-white text-xs focus:outline-none focus:border-neon-cyan/50"
+                    className="flex-1 bg-ink-900 border border-border-default rounded-lg px-2 py-2 text-ink-50 text-xs focus:outline-none focus:border-accent/40"
                     placeholder="URL"
                   />
-                  <label className="btn-neon cursor-pointer text-xs whitespace-nowrap px-2 py-2">
+                  <button
+                    type="button"
+                    onClick={() => baAfterInputRef.current?.click()}
+                    className="btn-neon cursor-pointer text-xs whitespace-nowrap px-2 py-2"
+                  >
                     ↑
-                    <input
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (file) handleUpload(file, 'image', setNewBaAfter);
-                      }}
-                    />
-                  </label>
+                  </button>
+                  <input
+                    ref={baAfterInputRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) handleUpload(file, 'image', setNewBaAfter);
+                    }}
+                  />
                 </div>
               </div>
             </div>
-            <div className="flex gap-2">
-              <button onClick={handleAddBa} className="btn-neon text-sm">
-                Добавить пару
+            <div className="flex gap-2 pt-2">
+              <button type="button" onClick={() => { console.log('Add BA clicked'); handleAddBa(); }} disabled={baLoading || uploading} className="btn-neon text-sm px-6 py-3">
+                {baLoading ? 'Добавление...' : uploading ? 'Загрузка...' : 'Добавить пару'}
               </button>
               <button
-                onClick={() => { setShowBaForm(false); setNewBaTitle(''); setNewBaBefore(''); setNewBaAfter(''); }}
-                className="text-gray-400 hover:text-white text-sm px-4 py-3"
+                type="button"
+                onClick={() => { setShowBaForm(false); setNewBaTitle(''); setNewBaBefore(''); setNewBaAfter(''); setBaError(''); }}
+                className="text-ink-200 hover:text-ink-50 text-sm px-4 py-3"
               >
                 Отмена
               </button>
@@ -583,13 +652,13 @@ export default function CollectionEditor({ collection }: { collection: Collectio
         )}
 
         {beforeAfters.length === 0 ? (
-          <p className="text-sm text-gray-500">Нет пар до/после</p>
+          <p className="text-sm text-ink-300">Нет пар до/после</p>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {beforeAfters.map((ba) => (
-              <div key={ba.id} className="bg-dark-card border border-dark-border rounded-lg p-3">
+              <div key={ba.id} className="bg-ink-800 border border-border-default rounded-lg p-3">
                 <div className="flex items-center justify-between mb-2">
-                  {ba.title && <p className="text-xs text-gray-400">{ba.title}</p>}
+                  {ba.title && <p className="text-xs text-ink-200">{ba.title}</p>}
                   <button
                     onClick={() => handleDeleteBa(ba.id)}
                     className="text-xs text-red-400 hover:text-red-300 ml-auto"
@@ -608,38 +677,38 @@ export default function CollectionEditor({ collection }: { collection: Collectio
       </div>
 
       {/* Share links */}
-      <div className="glass rounded-xl p-6">
+      <div className="glass rounded-xl p-4 sm:p-6">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold text-white">Ссылки для шеринга</h2>
-          <button onClick={() => setShowShareForm(!showShareForm)} className="btn-neon text-sm">
+          <h2 className="text-base font-semibold text-ink-50">Ссылки для шеринга</h2>
+          <button type="button" onClick={() => setShowShareForm(!showShareForm)} className="btn-neon text-sm">
             + Ссылка
           </button>
         </div>
 
         {showShareForm && (
-          <div className="flex gap-2 mb-4">
+          <div className="flex flex-col sm:flex-row gap-2 mb-4">
             <input
               type="text"
               value={shareLabel}
               onChange={(e) => setShareLabel(e.target.value)}
-              className="flex-1 bg-dark-card border border-dark-border rounded-lg px-4 py-2 text-white text-sm focus:outline-none focus:border-neon-cyan/50"
+              className="flex-1 bg-ink-800 border border-border-default rounded-lg px-4 py-2 text-ink-50 text-sm focus:outline-none focus:border-accent/40"
               placeholder="Название ссылки (например: для Facebook)"
             />
-            <button onClick={handleCreateShareLink} className="btn-neon text-sm">
+            <button type="button" onClick={handleCreateShareLink} className="btn-neon text-sm">
               Создать
             </button>
           </div>
         )}
 
         {collection.shareLinks.length === 0 ? (
-          <p className="text-sm text-gray-500">Нет ссылок</p>
+          <p className="text-sm text-ink-300">Нет ссылок</p>
         ) : (
           <div className="space-y-3">
             {collection.shareLinks.map((link) => (
-              <div key={link.id} className="bg-dark-card border border-dark-border rounded-lg p-4 flex items-center justify-between">
+              <div key={link.id} className="bg-ink-800 border border-border-default rounded-lg p-4 flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-white">{link.label}</p>
-                  <p className="text-xs text-gray-500">/share/{link.token.substring(0, 16)}...</p>
+                  <p className="text-sm text-ink-50">{link.label}</p>
+                  <p className="text-xs text-ink-300">/share/{link.token.substring(0, 16)}...</p>
                 </div>
                 <div className="flex gap-2">
                   <button
@@ -652,7 +721,7 @@ export default function CollectionEditor({ collection }: { collection: Collectio
                     href={`/share/${link.token}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-xs text-gray-400 hover:text-neon-cyan px-3 py-2"
+                    className="text-xs text-ink-200 hover:text-accent px-3 py-2"
                   >
                     Открыть →
                   </a>

@@ -44,6 +44,7 @@ model Room {
   collection     Collection @relation(fields: [collectionId], references: [id], onDelete: Cascade)
   hotspotsFrom   Hotspot[]  @relation("fromRoom")
   hotspotsTo     Hotspot[]  @relation("toRoom")
+  infoHotspots   InfoHotspot[]
 
   @@index([collectionId])
 }
@@ -63,6 +64,24 @@ model Hotspot {
   @@index([fromRoomId])
 }
 
+model InfoHotspot {
+  id          String   @id @default(uuid())
+  roomId      String
+  yaw         Float
+  pitch       Float
+  title       String
+  description String   @default("")
+  imageUrl    String?
+  linkUrl     String?
+  linkText    String   @default("Купить")
+  icon        String   @default("info")
+  createdAt   DateTime @default(now())
+
+  room Room @relation(fields: [roomId], references: [id], onDelete: Cascade)
+
+  @@index([roomId])
+}
+
 model BeforeAfter {
   id           String   @id @default(uuid())
   collectionId String
@@ -79,10 +98,11 @@ model BeforeAfter {
 }
 
 model Client {
-  id        String   @id @default(uuid())
-  name      String
-  email     String?
-  createdAt DateTime @default(now())
+  id           String   @id @default(uuid())
+  name         String
+  email        String?
+  accessToken  String   @unique
+  createdAt    DateTime @default(now())
 
   access ClientAccess[]
 }
@@ -117,4 +137,20 @@ model ShareLink {
   collection Collection @relation(fields: [collectionId], references: [id], onDelete: Cascade)
 
   @@index([collectionId])
+}
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  userId    String?
+  action    String
+  entity    String?
+  entityId  String?
+  ip        String?
+  userAgent String?
+  metadata  String?
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([action])
+  @@index([createdAt])
 }

@@ -39,17 +39,16 @@ export default function ViewerWithNavigator({ rooms }: ViewerWithNavigatorProps)
   if (rooms.length === 0) return null;
 
   return (
-    <>
-      <Viewer360
-        rooms={rooms}
-        initialRoomId={currentRoomId}
-        onRoomChange={handleRoomChange}
-      />
+    <Viewer360
+      rooms={rooms}
+      initialRoomId={currentRoomId}
+      onRoomChange={handleRoomChange}
+    >
       <RoomNavigator
         rooms={rooms.map((r, idx) => ({ id: r.id, name: r.name, order: idx }))}
         currentRoomId={currentRoomId}
         onRoomChange={handleRoomChange}
       />
-    </>
+    </Viewer360>
   );
 }
