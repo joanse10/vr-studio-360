@@ -13,6 +13,17 @@ interface Hotspot {
   icon: string;
 }
 
+interface InfoHotspot {
+  id: string;
+  title: string;
+  description: string | null;
+  imageUrl: string | null;
+  linkUrl: string | null;
+  linkText: string | null;
+  yaw: number;
+  pitch: number;
+}
+
 interface Room {
   id: string;
   name: string;
@@ -21,6 +32,7 @@ interface Room {
   initialPitch: number;
   initialHfov: number;
   hotspots: Hotspot[];
+  infoHotspots: InfoHotspot[];
 }
 
 const Viewer360 = dynamic(() => import('./Viewer360'), { ssr: false });
