@@ -23,6 +23,6 @@ export async function auditLog(params: {
       },
     });
   } catch (error) {
-    logger.error({ error, action: params.action }, 'Audit log error');
+    logger.error('Audit log error', { error, action: params.action });
   }
 }
