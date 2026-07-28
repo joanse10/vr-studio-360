@@ -20,10 +20,10 @@ interface Hotspot {
 interface InfoHotspot {
   id: string;
   title: string;
-  description: string;
+  description: string | null;
   imageUrl: string | null;
   linkUrl: string | null;
-  linkText: string;
+  linkText: string | null;
   yaw: number;
   pitch: number;
 }
