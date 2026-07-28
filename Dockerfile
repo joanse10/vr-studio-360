@@ -14,6 +14,8 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 RUN npx prisma generate
 ENV DATABASE_URL="postgresql://dummy:dummy@localhost:5432/dummy?schema=public"
+ENV JWT_SECRET="dummy-build-secret-not-used-in-runtime"
+ENV ENCRYPTION_KEY="dummy-build-key-not-used-in-runtime=="
 RUN npm run build
 
 # --- Production ---
