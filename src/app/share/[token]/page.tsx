@@ -55,15 +55,19 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     ? (collection.coverImage.startsWith('http') ? collection.coverImage : `${baseUrl}${collection.coverImage}`)
     : (collection.rooms[0]?.panoramaUrl
       ? (collection.rooms[0].panoramaUrl.startsWith('http') ? collection.rooms[0].panoramaUrl : `${baseUrl}${collection.rooms[0].panoramaUrl}`)
-      : undefined);
+      : `${baseUrl}/uploads/og-default.jpg`);
+  const title = `${collection.title} — 360° виртуальный тур | VR Studio 360`;
+  const description = collection.description
+    ? `${collection.description} — просмотрите 360° панорамный тур с переходами между комнатами на VR Studio 360.`
+    : `Виртуальный 360° тур: ${collection.title}. Панорамные изображения с переходами между комнатами. Создано на платформе VR Studio 360.`;
 
   return {
-    title: collection.title,
-    description: collection.description || `360° визуализация: ${collection.title}`,
+    title,
+    description,
     openGraph: {
-      title: collection.title,
-      description: collection.description || `360° визуализация: ${collection.title}`,
-      images: coverImage ? [{ url: coverImage, width: 1200, height: 630 }] : [],
+      title,
+      description,
+      images: [{ url: coverImage, width: 1200, height: 630, alt: collection.title }],
       type: 'website',
       url: `${baseUrl}/share/${params.token}`,
       siteName: 'VR Studio 360',
@@ -71,9 +75,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     },
     twitter: {
       card: 'summary_large_image',
-      title: collection.title,
-      description: collection.description || `360° визуализация: ${collection.title}`,
-      images: coverImage ? [coverImage] : [],
+      title,
+      description,
+      images: [coverImage],
     },
     robots: { index: false, follow: false },
   };
