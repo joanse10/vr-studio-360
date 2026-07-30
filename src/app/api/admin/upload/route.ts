@@ -81,12 +81,20 @@ export async function POST(req: NextRequest) {
     }
 
     // Re-encode through sharp to strip EXIF metadata and embedded payloads
-    const processedBuffer = await sharp(buffer)
-      .rotate()
-      .jpeg({ quality: 90, mozjpeg: true })
-      .toBuffer();
+    let processedBuffer: Buffer;
+    let safeFilename: string;
+    try {
+      processedBuffer = await sharp(buffer)
+        .rotate()
+        .jpeg({ quality: 90, mozjpeg: true })
+        .toBuffer();
+      safeFilename = `${uuidv4()}.jpg`;
+    } catch (sharpErr) {
+      console.error('Sharp processing failed, saving original:', sharpErr);
+      processedBuffer = buffer;
+      safeFilename = `${uuidv4()}.${ext}`;
+    }
 
-    const safeFilename = `${uuidv4()}.jpg`;
     const safePath = path.join(uploadDir, safeFilename);
     const resolvedSafePath = path.resolve(safePath);
     if (!resolvedSafePath.startsWith(resolvedDir + path.sep)) {
@@ -97,8 +105,9 @@ export async function POST(req: NextRequest) {
 
     const url = `/uploads/${safeFilename}`;
 
-    return NextResponse.json({ url, filename: safeFilename, type: 'jpg' });
-  } catch {
+    return NextResponse.json({ url, filename: safeFilename, type: ext });
+  } catch (err) {
+    console.error('Upload error:', err);
     return NextResponse.json({ error: 'Ошибка загрузки' }, { status: 500 });
   }
 }
