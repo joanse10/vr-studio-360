@@ -36,7 +36,6 @@ COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
 COPY --from=builder /app/node_modules/sharp ./node_modules/sharp
-COPY --from=builder /app/node_modules/.bin/sharp ./node_modules/.bin/sharp
 
 # Uploads directory
 RUN mkdir -p /app/public/uploads && chown nextjs:nodejs /app/public/uploads
