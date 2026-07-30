@@ -161,6 +161,9 @@ export default function Viewer360({
               text: ih.title,
               cssClass: 'info-hotspot',
               clickHandlerFunc: (e: any) => {
+                const target = e.target as HTMLElement;
+                // Allow link clicks inside popup to work normally
+                if (target.closest('a')) return;
                 e.preventDefault();
                 e.stopPropagation();
                 const hotspot = e.currentTarget || (e.target && e.target.closest('.info-hotspot'));
@@ -219,6 +222,7 @@ export default function Viewer360({
 
       const handleGlobalClick = (e: MouseEvent) => {
         const target = e.target as HTMLElement;
+        if (target.closest('a')) return;
         if (!target.closest('.info-hotspot')) {
           document.querySelectorAll('.info-hotspot-popup').forEach((p) => {
             (p as HTMLElement).style.display = 'none';
