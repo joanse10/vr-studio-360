@@ -50,6 +50,12 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   }
 
   const collection = shareLink.collection;
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://360.deznot.com';
+  const coverImage = collection.coverImage
+    ? (collection.coverImage.startsWith('http') ? collection.coverImage : `${baseUrl}${collection.coverImage}`)
+    : (collection.rooms[0]?.panoramaUrl
+      ? (collection.rooms[0].panoramaUrl.startsWith('http') ? collection.rooms[0].panoramaUrl : `${baseUrl}${collection.rooms[0].panoramaUrl}`)
+      : undefined);
 
   return {
     title: collection.title,
@@ -57,7 +63,17 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     openGraph: {
       title: collection.title,
       description: collection.description || `360° визуализация: ${collection.title}`,
-      images: collection.coverImage ? [{ url: collection.coverImage }] : [],
+      images: coverImage ? [{ url: coverImage, width: 1200, height: 630 }] : [],
+      type: 'website',
+      url: `${baseUrl}/share/${params.token}`,
+      siteName: 'VR Studio 360',
+      locale: 'ru_RU',
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: collection.title,
+      description: collection.description || `360° визуализация: ${collection.title}`,
+      images: coverImage ? [coverImage] : [],
     },
     robots: { index: false, follow: false },
   };

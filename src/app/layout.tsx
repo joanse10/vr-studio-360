@@ -5,6 +5,7 @@ import './globals.css';
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
 
 export const metadata: Metadata = {
+  metadataBase: new URL('https://360.deznot.com'),
   title: {
     default: 'VR Studio 360 — Визуализация интерьеров',
     template: '%s | VR Studio 360',
