@@ -60,7 +60,7 @@ export function recordFailedLogin(ip: string): { locked: boolean; remaining: num
   const now = Date.now();
   const entry = failedLogins.get(ip);
 
-  if (!entry || now > entry.lockedUntil) {
+  if (!entry || (entry.lockedUntil > 0 && now > entry.lockedUntil)) {
     failedLogins.set(ip, { attempts: 1, lockedUntil: 0 });
     return { locked: false, remaining: MAX_FAILED_ATTEMPTS - 1 };
   }
