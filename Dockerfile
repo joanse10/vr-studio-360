@@ -37,8 +37,8 @@ COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
 COPY --from=builder /app/node_modules/sharp ./node_modules/sharp
 
-# Uploads directory
-RUN mkdir -p /app/public/uploads && chown nextjs:nodejs /app/public/uploads
+# Uploads directory — ensure ownership after volume mount
+RUN mkdir -p /app/public/uploads && chown -R nextjs:nodejs /app/public
 
 COPY docker-entrypoint.sh ./docker-entrypoint.sh
 RUN chmod +x ./docker-entrypoint.sh

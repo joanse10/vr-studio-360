@@ -1,6 +1,9 @@
 #!/bin/sh
 set -e
 
+echo "Fixing uploads directory permissions..."
+chown -R nextjs:nodejs /app/public/uploads 2>/dev/null || true
+
 echo "Installing prisma CLI..."
 npm install --no-save prisma@5.19.1 2>&1 || true
 
